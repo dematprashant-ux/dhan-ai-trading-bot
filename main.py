@@ -1,12 +1,34 @@
-import time
 from datetime import datetime
 import json
 import asyncio
+import sys
 
 from config import *
 from src.api import dhan
 from src.api import openai
 from src.utils import logger
+
+
+def validate_config():
+    """Validate required configuration before starting the bot."""
+    errors = []
+    if not DHAN_CLIENT_ID:
+        errors.append("DHAN_CLIENT_ID is empty — set it in config.py")
+    if not DHAN_ACCESS_TOKEN:
+        errors.append("DHAN_ACCESS_TOKEN is empty — set it in config.py")
+    if not OPENAI_API_KEY:
+        errors.append("OPENAI_API_KEY is empty — set it in config.py")
+    if WATCHLIST_SYMBOLS and not SECURITY_ID_MAP:
+        errors.append("WATCHLIST_SYMBOLS is set but SECURITY_ID_MAP is empty — add security IDs")
+    if MODE not in ('demo', 'auto', 'manual'):
+        errors.append(f"MODE must be 'demo', 'auto', or 'manual', got '{MODE}'")
+
+    if errors:
+        for e in errors:
+            logger.error(f"Config error: {e}")
+        logger.error("Fix the above config errors in config.py and try again.")
+        return False
+    return True
 
 
 # Get AI amount guidelines
@@ -73,7 +95,8 @@ def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
     )
     logger.debug(f"AI making-decisions prompt:{chr(10)}{ai_prompt}")
     ai_response = openai.make_ai_request(ai_prompt)
-    logger.debug(f"AI making-decisions response:{chr(10)}{ai_response.choices[0].message.content.strip()}")
+    response_content = ai_response.choices[0].message.content
+    logger.debug(f"AI making-decisions response:{chr(10)}{response_content.strip() if response_content else 'None'}")
     decisions = openai.parse_ai_response(ai_response)
     return decisions
 
@@ -296,13 +319,15 @@ async def main():
             logger.error(f"Trading bot error: {e}")
 
         logger.info(f"Waiting for {run_interval_seconds} seconds...")
-        time.sleep(run_interval_seconds)
+        await asyncio.sleep(run_interval_seconds)
 
 
 # Run the main function
 if __name__ == '__main__':
+    if not validate_config():
+        sys.exit(1)
     confirm = input(f"Are you sure you want to run the bot in {MODE} mode? (yes/no): ")
     if confirm.lower() != "yes":
         logger.warning("Exiting the bot...")
-        exit()
+        sys.exit(0)
     asyncio.run(main())
