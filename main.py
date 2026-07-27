@@ -4,7 +4,7 @@ import json
 import asyncio
 
 from config import *
-from src.api import robinhood
+from src.api import dhan
 from src.api import openai
 from src.utils import logger
 
@@ -13,16 +13,16 @@ from src.utils import logger
 def get_ai_amount_guidelines():
     sell_guidelines = []
     if MIN_SELLING_AMOUNT_USD is not False:
-        sell_guidelines.append(f"Minimum amount {MIN_SELLING_AMOUNT_USD} USD")
+        sell_guidelines.append(f"Minimum amount {MIN_SELLING_AMOUNT_USD} INR")
     if MAX_SELLING_AMOUNT_USD is not False:
-        sell_guidelines.append(f"Maximum amount {MAX_SELLING_AMOUNT_USD} USD")
+        sell_guidelines.append(f"Maximum amount {MAX_SELLING_AMOUNT_USD} INR")
     sell_guidelines = ", ".join(sell_guidelines) if sell_guidelines else None
 
     buy_guidelines = []
     if MIN_BUYING_AMOUNT_USD is not False:
-        buy_guidelines.append(f"Minimum amount {MIN_BUYING_AMOUNT_USD} USD")
+        buy_guidelines.append(f"Minimum amount {MIN_BUYING_AMOUNT_USD} INR")
     if MAX_BUYING_AMOUNT_USD is not False:
-        buy_guidelines.append(f"Maximum amount {MAX_BUYING_AMOUNT_USD} USD")
+        buy_guidelines.append(f"Maximum amount {MAX_BUYING_AMOUNT_USD} INR")
     buy_guidelines = ", ".join(buy_guidelines) if buy_guidelines else None
 
     return sell_guidelines, buy_guidelines
@@ -31,7 +31,7 @@ def get_ai_amount_guidelines():
 # Make AI-based decisions on stock portfolio and watchlist
 def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
     constraints = [
-        f"- Initial budget: {account_info['buying_power']} USD",
+        f"- Initial budget: {account_info['buying_power']} INR",
         f"- Max portfolio size: {PORTFOLIO_LIMIT} stocks",
     ]
     sell_guidelines, buy_guidelines = get_ai_amount_guidelines()
@@ -45,8 +45,10 @@ def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
     ai_prompt = (
         "**Context:**\n"
         f"Today is {datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')}.{chr(10)}"
-        f"You are a short-term investment advisor managing a stock portfolio.{chr(10)}"
-        f"You analyze market conditions every {RUN_INTERVAL_SECONDS} seconds and make investment decisions.{chr(10)}{chr(10)}"
+        f"You are a short-term investment advisor managing an Indian stock portfolio.{chr(10)}"
+        f"You analyze market conditions every {RUN_INTERVAL_SECONDS} seconds and make investment decisions on NSE/BSE.{chr(10}"
+        f"All prices are in INR (Indian Rupees).{chr(10)}"
+        f"{chr(10)}{chr(10)}"
         "**Constraints:**\n"
         f"{chr(10).join(constraints)}"
         "\n\n"
@@ -62,9 +64,9 @@ def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
         "  ...\n"
         "]\n"
         "```\n"
-        "- <symbol>: Stock symbol.\n"
+        "- <symbol>: Stock symbol (NSE trading symbol).\n"
         "- <decision>: One of `buy`, `sell`, or `hold`.\n"
-        "- <quantity>: Recommended transaction quantity.\n\n"
+        "- <quantity>: Recommended transaction quantity (integer, in units of shares).\n\n"
         "**Instructions:**\n"
         "- Provide only the JSON output with no additional text.\n"
         "- Return an empty array if no actions are necessary."
@@ -106,15 +108,17 @@ def filter_ai_hallucinations(account_info, portfolio_overview, watchlist_overvie
             logger.debug(f"Filtering out decision for {symbol} - not found in portfolio or watchlist")
             continue
 
-        # Filter buy decisions with is_buy_pdt_restricted == True
-        if decision_type == "buy" and stock_data.get("is_buy_pdt_restricted", False):
-            logger.debug(f"Filtering out buy decision for {symbol} due to PDT restriction")
-            continue
-
-        # Filter sell decisions with is_sell_pdt_restricted == True
-        if decision_type == "sell" and stock_data.get("is_sell_pdt_restricted", False):
-            logger.debug(f"Filtering out sell decision for {symbol} due to PDT restriction")
-            continue
+        # Ensure quantity is a positive integer for Dhan
+        if decision_type in ("buy", "sell"):
+            try:
+                quantity = int(float(quantity))
+                if quantity <= 0:
+                    logger.debug(f"Filtering out {decision_type} decision for {symbol} with non-positive quantity")
+                    continue
+                decision['quantity'] = quantity
+            except (ValueError, TypeError):
+                logger.debug(f"Filtering out {decision_type} decision for {symbol} with invalid quantity")
+                continue
 
         filtered_decisions.append(decision)
 
@@ -147,40 +151,31 @@ def limit_watchlist_stocks(watchlist_stocks, limit):
 # Main trading bot function
 def trading_bot():
     logger.info("Getting account info...")
-    account_info = robinhood.get_account_info()
+    account_info = dhan.get_account_info()
 
     logger.info("Getting portfolio stocks...")
-    portfolio_stocks = robinhood.get_portfolio_stocks()
+    portfolio_stocks = dhan.get_portfolio_stocks()
 
     logger.debug(f"Portfolio stocks total: {len(portfolio_stocks)}")
 
     portfolio_stocks_value = 0
     for stock in portfolio_stocks.values():
-        portfolio_stocks_value += float(stock['price']) * float(stock['quantity'])
-    portfolio = [f"{symbol} ({round(float(stock['price']) * float(stock['quantity']) / portfolio_stocks_value * 100, 2)}%)" for symbol, stock in portfolio_stocks.items()]
+        portfolio_stocks_value += float(stock.get('ltp', 0)) * float(stock.get('netQuantity', 0))
+    portfolio = [f"{symbol} ({round(float(stock.get('ltp', 0)) * float(stock.get('netQuantity', 0)) / portfolio_stocks_value * 100, 2)}%)" for symbol, stock in portfolio_stocks.items()] if portfolio_stocks_value > 0 else []
     logger.info(f"Portfolio stocks to proceed: {'None' if len(portfolio) == 0 else ', '.join(portfolio)}")
 
     logger.info("Prepare portfolio stocks for AI analysis...")
     portfolio_overview = {}
     for symbol, stock_data in portfolio_stocks.items():
-        historical_data_day = robinhood.get_historical_data(symbol, interval="5minute", span="day")
-        historical_data_year = robinhood.get_historical_data(symbol, interval="day", span="year")
-        ratings_data = robinhood.get_ratings(symbol)
-        portfolio_overview[symbol] = robinhood.extract_my_stocks_data(stock_data)
-        portfolio_overview[symbol] = robinhood.enrich_with_rsi(portfolio_overview[symbol], historical_data_day, symbol)
-        portfolio_overview[symbol] = robinhood.enrich_with_vwap(portfolio_overview[symbol], historical_data_day, symbol)
-        portfolio_overview[symbol] = robinhood.enrich_with_moving_averages(portfolio_overview[symbol], historical_data_year, symbol)
-        portfolio_overview[symbol] = robinhood.enrich_with_analyst_ratings(portfolio_overview[symbol], ratings_data)
-        portfolio_overview[symbol] = robinhood.enrich_with_pdt_restrictions(portfolio_overview[symbol], symbol)
+        historical_data_day = dhan.get_intraday_data(symbol, interval=5)
+        historical_data_year = dhan.get_historical_data_daily(symbol, days=365)
+        portfolio_overview[symbol] = dhan.extract_my_stocks_data(stock_data)
+        portfolio_overview[symbol] = dhan.enrich_with_rsi(portfolio_overview[symbol], historical_data_day, symbol)
+        portfolio_overview[symbol] = dhan.enrich_with_vwap(portfolio_overview[symbol], historical_data_day, symbol)
+        portfolio_overview[symbol] = dhan.enrich_with_moving_averages(portfolio_overview[symbol], historical_data_year, symbol)
 
     logger.info("Getting watchlist stocks...")
-    watchlist_stocks = []
-    for watchlist_name in WATCHLIST_NAMES:
-        try:
-            watchlist_stocks.extend(robinhood.get_watchlist_stocks(watchlist_name))
-            watchlist_stocks = [dict(t) for t in {tuple(d.items()) for d in watchlist_stocks}]
-        except Exception as e:
-            logger.error(f"Error getting watchlist stocks for {watchlist_name}: {e}")
+    watchlist_stocks = dhan.get_watchlist_stocks()
 
     logger.debug(f"Watchlist stocks total: {len(watchlist_stocks)}")
 
@@ -197,15 +192,12 @@ def trading_bot():
         logger.info("Prepare watchlist overview for AI analysis...")
         for stock_data in watchlist_stocks:
             symbol = stock_data['symbol']
-            historical_data_day = robinhood.get_historical_data(symbol, interval="5minute", span="day")
-            historical_data_year = robinhood.get_historical_data(symbol, interval="day", span="year")
-            ratings_data = robinhood.get_ratings(symbol)
-            watchlist_overview[symbol] = robinhood.extract_watchlist_data(stock_data)
-            watchlist_overview[symbol] = robinhood.enrich_with_rsi(watchlist_overview[symbol], historical_data_day, symbol)
-            watchlist_overview[symbol] = robinhood.enrich_with_vwap(watchlist_overview[symbol], historical_data_day, symbol)
-            watchlist_overview[symbol] = robinhood.enrich_with_moving_averages(watchlist_overview[symbol], historical_data_year, symbol)
-            watchlist_overview[symbol] = robinhood.enrich_with_analyst_ratings(watchlist_overview[symbol], ratings_data)
-            watchlist_overview[symbol] = robinhood.enrich_with_pdt_restrictions(watchlist_overview[symbol], symbol)
+            historical_data_day = dhan.get_intraday_data(symbol, interval=5)
+            historical_data_year = dhan.get_historical_data_daily(symbol, days=365)
+            watchlist_overview[symbol] = dhan.extract_watchlist_data(stock_data)
+            watchlist_overview[symbol] = dhan.enrich_with_rsi(watchlist_overview[symbol], historical_data_day, symbol)
+            watchlist_overview[symbol] = dhan.enrich_with_vwap(watchlist_overview[symbol], historical_data_day, symbol)
+            watchlist_overview[symbol] = dhan.enrich_with_moving_averages(watchlist_overview[symbol], historical_data_year, symbol)
 
     if len(portfolio_overview) == 0 and len(watchlist_overview) == 0:
         logger.warning("No stocks to analyze, skipping AI-based decision-making...")
@@ -237,7 +229,7 @@ def trading_bot():
 
         if decision == "sell":
             try:
-                sell_resp = robinhood.sell_stock(symbol, quantity)
+                sell_resp = dhan.sell_stock(symbol, quantity)
                 if sell_resp and 'id' in sell_resp:
                     if sell_resp['id'] == "demo":
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "success", "details": "Demo mode"}
@@ -246,11 +238,11 @@ def trading_bot():
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "cancelled", "details": "Cancelled by user"}
                         logger.info(f"{symbol} > Sell cancelled by user")
                     else:
-                        details = robinhood.extract_sell_response_data(sell_resp)
+                        details = dhan.extract_sell_response_data(sell_resp)
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "success", "details": details}
                         logger.info(f"{symbol} > Sold {quantity} stocks")
                 else:
-                    details = sell_resp['detail'] if 'detail' in sell_resp else sell_resp
+                    details = sell_resp.get('detail', sell_resp) if sell_resp else sell_resp
                     trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "error", "details": details}
                     logger.error(f"{symbol} > Error selling: {details}")
             except Exception as e:
@@ -259,7 +251,7 @@ def trading_bot():
 
         if decision == "buy":
             try:
-                buy_resp = robinhood.buy_stock(symbol, quantity)
+                buy_resp = dhan.buy_stock(symbol, quantity)
                 if buy_resp and 'id' in buy_resp:
                     if buy_resp['id'] == "demo":
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "success", "details": "Demo mode"}
@@ -268,11 +260,11 @@ def trading_bot():
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "cancelled", "details": "Cancelled by user"}
                         logger.info(f"{symbol} > Buy cancelled by user")
                     else:
-                        details = robinhood.extract_buy_response_data(buy_resp)
+                        details = dhan.extract_buy_response_data(buy_resp)
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "success", "details": details}
                         logger.info(f"{symbol} > Bought {quantity} stocks")
                 else:
-                    details = buy_resp['detail'] if 'detail' in buy_resp else buy_resp
+                    details = buy_resp.get('detail', buy_resp) if buy_resp else buy_resp
                     trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "error", "details": details}
                     logger.error(f"{symbol} > Error buying: {details}")
             except Exception as e:
@@ -284,20 +276,9 @@ def trading_bot():
 
 # Run trading bot in a loop
 async def main():
-    robinhood_token_expiry = 0
-
     while True:
         try:
-            # Check if Robinhood token needs refresh (refresh 5 minutes before expiry)
-            if time.time() >= robinhood_token_expiry - 300:
-                logger.info("Login to Robinhood...")
-                login_resp = await robinhood.login_to_robinhood()
-                if not login_resp or 'expires_in' not in login_resp:
-                    raise Exception("Failed to login to Robinhood")
-                robinhood_token_expiry = time.time() + login_resp['expires_in']
-                logger.info(f"Successfully logged in. Token expires in {login_resp['expires_in']} seconds")
-
-            if robinhood.is_market_open():
+            if dhan.is_market_open():
                 run_interval_seconds = RUN_INTERVAL_SECONDS
                 logger.info(f"Market is open, running trading bot in {MODE} mode...")
 
@@ -327,4 +308,3 @@ if __name__ == '__main__':
         logger.warning("Exiting the bot...")
         exit()
     asyncio.run(main())
-

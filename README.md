@@ -1,13 +1,11 @@
-# Robinhood AI Trading Bot
-
-<img src="images/avatar.png" width="277" alt="Robinhood AI Trading Bot"/>
+# Dhan AI Trading Bot
 
 ## ⚡ Overview
-The **Robinhood AI Trading Bot** is a simple Python script
-that combines **OpenAI's intelligence** with **Robinhood's trading capabilities**
-to help automate and optimize stock trading decisions.
+The **Dhan AI Trading Bot** is a simple Python script
+that combines **OpenAI's intelligence** with **Dhan's trading capabilities**
+to help automate and optimize stock trading decisions on Indian stock exchanges (NSE/BSE).
 By analyzing **Relative Strength Index (RSI)**, **Volume-Weighted Average Price (VWAP)**,
-**Moving Averages**, and **Robinhood analyst ratings**, the bot generates buy, sell,
+and **Moving Averages**, the bot generates buy, sell,
 and hold recommendations — executing trades automatically based on your selected mode.
 
 ## 🤔 Why This Bot?
@@ -19,17 +17,18 @@ to explore how AI can enhance stock trading decisions — potentially outperform
 - **Start in Demo or Manual Mode** before enabling Auto Mode.
 - **Test thoroughly** to fine-tune AI decision-making.
 - **Monitor trade logs** to understand AI-driven actions.
+- **Note:** For CNC (delivery) sells, Dhan requires eDIS T-Pin authorization.
 
 ## 🛠 Features
 ✅ **AI-Driven Trading** – Smart, data-backed buy/sell decisions.  
-✅ **Portfolio & Watchlist Integration** – Trade directly from your Robinhood stocks.  
+✅ **Portfolio & Watchlist Integration** – Trade directly from your Dhan holdings.  
 ✅ **Configurable Strategy** – Set trading parameters to fit your risk profile.  
 ✅ **Exclusion List** – Prevent trading specific stocks.  
 ✅ **Logging & Analytics** – Track bot activity and trading history.  
-✅ **Workday Scheduling** – Align trading activity with market hours.
+✅ **Indian Market Hours** – Automatically aligns with NSE/BSE trading hours (9:15 AM - 3:30 PM IST).
 
 ## 🚀 Getting Started
-1. **Connect Your Accounts**: Add your OpenAI API Key and Robinhood credentials.
+1. **Connect Your Accounts**: Add your OpenAI API Key and Dhan API credentials.
 2. **Choose a Mode**:
    - **Demo Mode**: Simulates trades without execution.
    - **Manual Mode**: Requires confirmation before executing trades.
@@ -37,13 +36,12 @@ to explore how AI can enhance stock trading decisions — potentially outperform
 3. **Monitor and Adjust**: Review trade logs and fine-tune settings for optimal performance.
 
 ## 📊 How It Works
-1. **Authenticate**: Logs into OpenAI and Robinhood.
-2. **Fetch Data**: Retrieves stocks from your **portfolio** and **watchlist**.
+1. **Authenticate**: Connects to OpenAI and Dhan using your API credentials.
+2. **Fetch Data**: Retrieves stocks from your **portfolio** (holdings) and **watchlist** (configured symbols).
 3. **Analyze Market Conditions**:
    - **RSI**: Determines overbought/oversold conditions.
    - **VWAP**: Identifies undervalued/overvalued stocks.
    - **Moving Averages**: Evaluates price trends (50-day and 200-day).
-   - **Analyst Ratings**: Incorporates Robinhood's expert opinions.
 4. **AI-Driven Decisions**: Uses OpenAI to generate trading recommendations.
 5. **Trade Execution**: Buys, sells, or holds stocks based on AI insights.
 6. **Continuous Monitoring**: Repeats analysis and trades as the market evolves.
@@ -64,78 +62,37 @@ to explore how AI can enhance stock trading decisions — potentially outperform
 - **Golden Cross (50-day crosses above 200-day)**: Bullish signal.
 - **Death Cross (50-day crosses below 200-day)**: Bearish signal.
 
-### **Robinhood Analyst Ratings**
-- Aggregates **buy, hold, and sell** recommendations.
-- Provides sentiment analysis based on expert insights.
-
 ## 🤖 AI-Powered Decision Making
 The bot formulates decisions using OpenAI based on:
-- RSI, VWAP, moving averages, and analyst ratings.
+- RSI, VWAP, and moving averages.
 - User-defined constraints (e.g., budget, stock exclusions, portfolio size).
-- Pattern Day Trading (PDT) status to prevent PDT designation.
 
 ### **Example AI Prompt**:
 ``````
 **Context:**
-Today is 2025-02-03T12:23:02Z.
-You are a short-term investment advisor managing a stock portfolio.
-You analyze market conditions every 3600 seconds and make investment decisions.
+Today is 2025-07-26T12:23:02Z.
+You are a short-term investment advisor managing an Indian stock portfolio.
+You analyze market conditions every 600 seconds and make investment decisions on NSE/BSE.
+All prices are in INR (Indian Rupees).
 
 **Constraints:**
-- Initial budget: 0.22 USD
-- Max portfolio size: 20 stocks
+- Initial budget: 50000.00 INR
+- Max portfolio size: 10 stocks
+- Sell Amounts Guidelines: Minimum amount 1.0 INR, Maximum amount 10.0 INR
+- Buy Amounts Guidelines: Minimum amount 1.0 INR, Maximum amount 10.0 INR
 - Excluded stocks: VOO, SPY, IVV
 
 **Stock Data:**
 ```json
 {
- "AAPL": {
-  "current_price": 226.79,
-  "my_quantity": 0.0927,
-  "my_average_buy_price": 226.43,
-  "rsi": 40.47,
-  "vwap": 228.41,
-  "50_day_mavg_price": 240.23,
-  "200_day_mavg_price": 219.7,
-  "analyst_summary": {
-   "num_buy_ratings": 30,
-   "num_hold_ratings": 17,
-   "num_sell_ratings": 5
-  },
-  "analyst_ratings": [
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "sell",
-    "text": "Regulators have a keen eye on Apple, and recent regulations have chipped away at parts of Apple\u2019s sticky ecosystem. "
-   },
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "sell",
-    "text": "Apple\u2019s supply chain is highly concentrated in China and Taiwan, which opens up the firm to geopolitical risk. Attempts to diversify into other regions may pressure profitability or efficiency."
-   },
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "sell",
-    "text": "Apple is prone to consumer spending and preferences, which creates cyclicality and opens the firm up to disruption."
-   },
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "buy",
-    "text": "Apple has a stellar balance sheet and sends great amounts of cash flow back to shareholders."
-   },
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "buy",
-    "text": "We like Apple\u2019s move to in-house chip development, which we think has accelerated its product development and increased its differentiation. "
-   },
-   {
-    "published_at": "2025-02-01T01:13:18Z",
-    "type": "buy",
-    "text": "Apple offers an expansive ecosystem of tightly integrated hardware, software, and services, which locks in customers and generates strong profitability."
-   }
-  ]
-  "is_buy_pdt_restricted": false,
-  "is_sell_pdt_restricted": false
+ "RELIANCE": {
+  "current_price": 2450.50,
+  "my_quantity": 10,
+  "my_average_buy_price": 2380.00,
+  "rsi": 45.2,
+  "vwap": 2445.30,
+  "50_day_mavg_price": 2420.00,
+  "200_day_mavg_price": 2350.00
  },
  ...
 }
@@ -149,9 +106,9 @@ Return your decisions in a JSON array with this structure:
   ...
 ]
 ```
-- <symbol>: Stock symbol.
+- <symbol>: Stock symbol (NSE trading symbol).
 - <decision>: One of `buy`, `sell`, or `hold`.
-- <quantity>: Recommended transaction quantity.
+- <quantity>: Recommended transaction quantity (integer, in units of shares).
 
 **Instructions:**
 - Provide only the JSON output with no additional text.
@@ -161,20 +118,12 @@ Return your decisions in a JSON array with this structure:
 AI-response example:
 ```
 [
-    {"symbol": "AAPL", "decision": "sell", "quantity": 0.564172},
-    {"symbol": "BL", "decision": "hold", "quantity": 0.0},
-    {"symbol": "EQIX", "decision": "buy", "quantity": 1.0},
+    {"symbol": "RELIANCE", "decision": "sell", "quantity": 5},
+    {"symbol": "TCS", "decision": "hold", "quantity": 0},
+    {"symbol": "INFY", "decision": "buy", "quantity": 2},
     ...
 ]
 ```
-
-### Pattern Day Trading (PDT) Protection
-The bot includes built-in protection against Pattern Day Trading (PDT) designation:
-- Automatically checks PDT status for each stock
-- Prevents day trades when PDT restricted
-- Includes PDT information in AI decision-making
-
-For more information about PDT rules, visit: [Robinhood Pattern Day Trading](https://robinhood.com/us/en/support/articles/pattern-day-trading/)
 
 ## 📝 Logging System
 The bot logs its activity and trading decisions in a console log.
@@ -182,110 +131,91 @@ The bot logs its activity and trading decisions in a console log.
 ### **Example Log Output**:
 ```
 Are you sure you want to run the bot in auto mode? (yes/no): yes
-[2024-11-01 11:06:58] [INFO]    Market is open, running trading bot in auto mode...
-[2024-11-01 11:06:58] [INFO]    Getting portfolio stocks...
-[2024-11-01 11:07:02] [INFO]    Portfolio stocks to proceed: NVDA (1.07%), MSFT (0.12%), SNAP (0.25%), NWSA (13.71%), ...
-[2024-11-01 11:07:02] [INFO]    Prepare portfolio stocks for AI analysis...
-[2024-11-01 11:07:07] [INFO]    Getting watchlist stocks...
-[2024-11-01 11:07:08] [INFO]    Watchlist stocks to proceed: VRT, BB, VRNT, PBI, BMBL, IESC, WB, LITE, ...
-[2024-11-01 11:07:08] [INFO]    Prepare watchlist overview for AI analysis...
-[2024-11-01 11:07:09] [INFO]    Making AI-based decision...
-[2024-11-01 11:07:21] [INFO]    Executing decisions...
-[2024-11-01 11:07:21] [INFO]    NVDA > Decision: sell of 2.012
-[2024-11-01 11:07:21] [ERROR]   NVDA > Sold 2.012 stocks
-[2024-11-01 11:07:21] [INFO]    MSFT > Decision: sell of 1.5422
-[2024-11-01 11:07:21] [ERROR]   MSFT > Error selling: Not enough shares to sell.
-[2024-11-01 11:07:22] [INFO]    VRT > Decision: buy of 2.09
-[2024-11-01 11:07:23] [INFO]    VRT > Bought 2.09 stocks
-[2024-11-01 11:07:23] [INFO]    SNAP > Decision: hold of 0.0323
-[2024-11-01 11:07:23] [INFO]    VIAV > Decision: hold of 0.0212
-[2024-11-01 11:07:24] [INFO]    Stocks sold: NVDA (2.0)
-[2024-11-01 11:07:24] [INFO]    Stocks bought: VRT (2.09)
-[2024-11-01 11:07:24] [INFO]    Errors: MSFT (Not enough shares to sell.)
-[2024-11-01 11:07:24] [INFO]    Waiting for 600 seconds...
+[2025-07-26 11:06:58] [INFO]    Market is open, running trading bot in auto mode...
+[2025-07-26 11:06:58] [INFO]    Getting account info...
+[2025-07-26 11:07:02] [INFO]    Getting portfolio stocks...
+[2025-07-26 11:07:02] [INFO]    Portfolio stocks to proceed: RELIANCE (45.12%), TCS (30.5%), ...
+[2025-07-26 11:07:02] [INFO]    Prepare portfolio stocks for AI analysis...
+[2025-07-26 11:07:07] [INFO]    Getting watchlist stocks...
+[2025-07-26 11:07:08] [INFO]    Watchlist stocks to proceed: INFY, HDFCBANK, ICICIBANK, ...
+[2025-07-26 11:07:08] [INFO]    Prepare watchlist overview for AI analysis...
+[2025-07-26 11:07:09] [INFO]    Making AI-based decision...
+[2025-07-26 11:07:21] [INFO]    Executing decisions...
+[2025-07-26 11:07:21] [INFO]    RELIANCE > Decision: sell of 5
+[2025-07-26 11:07:21] [INFO]    RELIANCE > Sold 5 stocks
+[2025-07-26 11:07:21] [INFO]    INFY > Decision: buy of 2
+[2025-07-26 11:07:23] [INFO]    INFY > Bought 2 stocks
+[2025-07-26 11:07:24] [INFO]    Sold: RELIANCE (5)
+[2025-07-26 11:07:24] [INFO]    Bought: INFY (2)
+[2025-07-26 11:07:24] [INFO]    Errors: None
+[2025-07-26 11:07:24] [INFO]    Waiting for 600 seconds...
 ```
 
 ## 🛠️ Setup Guide
 ### Installation
 1. Clone the repository:
     ```sh
-    git clone https://github.com/siropkin/robinhood-ai-trading-bot.git
-    cd robinhood-ai-trading-bot
+    git clone https://github.com/your-repo/dhan-ai-trading-bot.git
+    cd dhan-ai-trading-bot
     ```
 
-2. Install dependencies:
+2. Install dependencies (requires Python 3.10+):
     ```sh
     pip install -r requirements.txt
     ```
 
-
 ### Configuration
-Copy the example config and update it with your details::
+Copy the example config and update it with your details:
    ```sh
    cp config.py.example config.py
    ```
 
 Fill in config.py with the required parameters:
 ```python
-# 1Password Credentials
-OP_SERVICE_ACCOUNT_NAME = "..."             # 1Password service account name (for Robinhood MFA secret)
-OP_SERVICE_ACCOUNT_TOKEN = "..."            # 1Password service account token (for Robinhood MFA secret)
-OP_VAULT_NAME = "..."                       # 1Password vault name (for Robinhood MFA secret)
-OP_ITEM_NAME = "..."                        # 1Password item name (for Robinhood MFA secret)
+# Dhan API Credentials
+DHAN_CLIENT_ID = ""                            # Dhan Client ID (from https://www.dhan.co)
+DHAN_ACCESS_TOKEN = ""                         # Dhan Access Token
 
-# Credentials
-OPENAI_API_KEY = "..."                      # OpenAI API key
-ROBINHOOD_USERNAME = "..."                  # Robinhood username
-ROBINHOOD_PASSWORD = "..."                  # Robinhood password
-ROBINHOOD_MFA_SECRET = ""                   # Robinhood MFA secret (if enabled)
+# OpenAI Credentials
+OPENAI_API_KEY = "..."                         # OpenAI API key
 
 # Basic config parameters
-MODE = "demo"                               # Trading mode (demo, auto, manual)
-LOG_LEVEL = "INFO"                          # Log level (DEBUG, INFO)
-RUN_INTERVAL_SECONDS = 600                  # Trading interval in seconds (if the market is open)
+MODE = "demo"                                  # Trading mode (demo, auto, manual)
+LOG_LEVEL = "INFO"                             # Log level (DEBUG, INFO)
+RUN_INTERVAL_SECONDS = 600                     # Trading interval in seconds
 
-# Robinhood config parameters
-TRADE_EXCEPTIONS = []                       # List of stocks to exclude from trading (e.g. ["AAPL", "TSLA", "AMZN"])
-WATCHLIST_NAMES = []                        # Watchlist names (can be empty, or "My First List", "My Second List", etc.)
-WATCHLIST_OVERVIEW_LIMIT = 10               # Number of stocks to process in decision-making (e.g. 20)
-PORTFOLIO_LIMIT = 10                        # Number of stocks to hold in the portfolio
-MIN_SELLING_AMOUNT_USD = 1.0                # Minimum sell amount in USD (False - disable setting)
-MAX_SELLING_AMOUNT_USD = 10.0               # Maximum sell amount in USD (False - disable setting)
-MIN_BUYING_AMOUNT_USD = 1.0                 # Minimum buy amount in USD (False - disable setting)
-MAX_BUYING_AMOUNT_USD = 10.0                # Maximum buy amount in USD (False - disable setting)
+# Dhan exchange and product settings
+DHAN_EXCHANGE_SEGMENT = "NSE_EQ"               # Exchange segment (NSE_EQ, BSE_EQ, etc.)
+DHAN_PRODUCT_TYPE = "CNC"                      # Product type (CNC = Delivery, INTRADAY)
+
+# Dhan trading config parameters
+TRADE_EXCEPTIONS = []                          # Stocks to exclude from trading
+WATCHLIST_SYMBOLS = []                         # Stock symbols to watch (e.g. ["RELIANCE", "TCS"])
+
+# Security ID Map: Maps ticker symbols to Dhan's numeric security IDs
+SECURITY_ID_MAP = {
+    # "RELIANCE": "1333",
+    # "TCS": "11536",
+    # "INFY": "1594",
+}
+
+# Trading limits (in INR)
+MIN_SELLING_AMOUNT_USD = 1.0                   # Minimum sell amount in INR
+MAX_SELLING_AMOUNT_USD = 10.0                  # Maximum sell amount in INR
+MIN_BUYING_AMOUNT_USD = 1.0                    # Minimum buy amount in INR
+MAX_BUYING_AMOUNT_USD = 10.0                   # Maximum buy amount in INR
+PORTFOLIO_LIMIT = 10                           # Max stocks in portfolio
+WATCHLIST_OVERVIEW_LIMIT = 5                   # Max watchlist stocks to analyze per run
 
 # OpenAI config params
-OPENAI_MODEL_NAME = "gpt-4o-mini"           # OpenAI model name
+OPENAI_MODEL_NAME = "gpt-4o-mini"              # OpenAI model name
 ```
 
-#### Robinhood MFA Setup
-If MFA is enabled, you'll need to provide an MFA code. There are two options:
-
-##### Option 1: Use `ROBINHOOD_MFA_SECRET` (Local MFA Code)
-If you prefer to set the MFA secret directly, follow these steps:
-1. Log in to your Robinhood account on your phone. Important to use your phone because it will display the secret key but not the QR code.
-2. Navigate to the security settings.
-3. Enable MFA if it is not already enabled. When setting up MFA, you will be asked to select an authentication method on your phone. Choose "Authenticator app" and Robinhood will provide you with a secret key. This is your `ROBINHOOD_MFA_SECRET`.
-4. Copy this secret key and set it as the `ROBINHOOD_MFA_SECRET` environment variable or paste it directly into the `config.py` file.
-5. Enter the same secret key into your authentication app on the same PC where you run the script (e.g., Google Authenticator). Note: If you enter the secret on a different device, it will generate a different value.
-6. After entering the same secret on the same PC, use the generated TOTP number to authenticate with the Robinhood app.
-
-##### Option 2: Use 1Password (Auto MFA Retrieval)
-If you do not set the `ROBINHOOD_MFA_SECRET` environment variable, the script will attempt to retrieve the MFA secret from 1Password using the following credentials:
-```python
-# 1Password Credentials
-OP_SERVICE_ACCOUNT_NAME = "..."             # 1Password service account name (for Robinhood MFA secret)
-OP_SERVICE_ACCOUNT_TOKEN = "..."            # 1Password service account token (for Robinhood MFA secret)
-OP_VAULT_NAME = "..."                       # 1Password vault name (for Robinhood MFA secret)
-OP_ITEM_NAME = "..."                        # 1Password item name (for Robinhood MFA secret)
-```
-
-To use this feature:
-1. Ensure the above 1Password credentials are correctly configured in your environment or `config.py` file.
-2. Store your Robinhood MFA secret in the specified 1Password vault and item.
-3. The script will automatically fetch the MFA secret from 1Password if `ROBINHOOD_MFA_SECRET` is not provided.
-
-For more information on setting up 1Password Service Accounts, read the guide: [Get started with 1Password Service Accounts](https://developer.1password.com/docs/service-accounts/get-started/)
+#### Dhan API Setup
+1. Create a Dhan account at [dhan.co](https://www.dhan.co) if you don't have one.
+2. Get your **Client ID** from the Dhan dashboard.
+3. Generate an **Access Token** via Dhan's OAuth flow or PIN+TOTP method.
+4. Find **Security IDs** for your stocks from the [Dhan Scrip Master CSV](https://images.dhan.co/api-data/api-scrip-master.csv).
 
 ### Running the Bot
 Start the bot with:
@@ -306,8 +236,3 @@ Contributions are highly encouraged and welcomed!
 Whether you're looking to enhance the logging system, optimize AI-prompt strategies,
 or enrich stock data — there's always room for fresh ideas and improvements.
 Feel free to submit pull requests or open issues to share your suggestions and expertise!
-
-## 📧 Contact
-Got questions, feedback, or just want to chat?
-Reach out via email at [goodbotty@proton.me](mailto:goodbotty@proton.me).
-I'm always happy to hear from you!
