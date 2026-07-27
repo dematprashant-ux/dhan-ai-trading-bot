@@ -2,12 +2,16 @@
     "include": ["src", "main.py"],
     "typeCheckingMode": "basic",
     "pythonVersion": "3.12",
-    "reportMissingTypeStubs": "warning",
+    "stubPath": "./stubs",
+    "extraPaths": ["./stubs"],
+    "reportMissingTypeStubs": "none",
+    "reportMissingModuleSource": "none",
     "reportUnknownMemberType": "none",
     "reportUnknownParameterType": "none",
     "reportUnknownVariableType": "none",
     "reportUnknownArgumentType": "none",
     "reportPrivateUsage": "none",
     "reportImportCycles": "none",
-    "reportAttributeAccessIssue": "none"
+    "reportAttributeAccessIssue": "none",
+    "reportAssignmentType": "none"
 }

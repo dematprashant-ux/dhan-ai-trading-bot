@@ -209,8 +209,8 @@ def enrich_with_vwap(stock_data: Dict[str, Any], historical_data: Optional[List[
     ) / 3
 
     # Compute VWAP
-    sum_of_volumes: float = stock_history_df["volume"].sum()
-    dot_product: float = stock_history_df["volume"].dot(stock_history_df["typical_price"])
+    sum_of_volumes = stock_history_df["volume"].sum().item()
+    dot_product = stock_history_df["volume"].dot(stock_history_df["typical_price"]).item()
 
     if sum_of_volumes == 0:
         logger.debug(f"Total volume is zero for {symbol}, cannot compute VWAP")
@@ -234,8 +234,8 @@ def enrich_with_moving_averages(stock_data: Dict[str, Any], historical_data: Opt
         logger.debug(f"Not enough valid prices for moving averages for {symbol}")
         return stock_data
 
-    moving_avg_50: float = pd.Series(prices).rolling(window=50).mean().iloc[-1]
-    moving_avg_200: float = pd.Series(prices).rolling(window=200).mean().iloc[-1]
+    moving_avg_50 = pd.Series(prices).rolling(window=50).mean().iloc[-1].item()
+    moving_avg_200 = pd.Series(prices).rolling(window=200).mean().iloc[-1].item()
     stock_data["50_day_mavg_price"] = round_money(moving_avg_50)
     stock_data["200_day_mavg_price"] = round_money(moving_avg_200)
     return stock_data
