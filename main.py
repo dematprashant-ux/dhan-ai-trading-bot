@@ -46,7 +46,7 @@ def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
         "**Context:**\n"
         f"Today is {datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')}.{chr(10)}"
         f"You are a short-term investment advisor managing an Indian stock portfolio.{chr(10)}"
-        f"You analyze market conditions every {RUN_INTERVAL_SECONDS} seconds and make investment decisions on NSE/BSE.{chr(10}"
+        f"You analyze market conditions every {RUN_INTERVAL_SECONDS} seconds and make investment decisions on NSE/BSE.{chr(10)}"
         f"All prices are in INR (Indian Rupees).{chr(10)}"
         f"{chr(10)}{chr(10)}"
         "**Constraints:**\n"
