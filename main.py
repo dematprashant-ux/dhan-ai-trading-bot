@@ -238,9 +238,8 @@ def trading_bot():
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "cancelled", "details": "Cancelled by user"}
                         logger.info(f"{symbol} > Sell cancelled by user")
                     else:
-                        details = dhan.extract_sell_response_data(sell_resp)
-                        trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "success", "details": details}
-                        logger.info(f"{symbol} > Sold {quantity} stocks")
+                        trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "success", "details": sell_resp}
+                        logger.info(f"{symbol} > Sold {quantity} stocks at ₹{sell_resp.get('price', 'N/A')}")
                 else:
                     details = sell_resp.get('detail', sell_resp) if sell_resp else sell_resp
                     trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "sell", "result": "error", "details": details}
@@ -260,9 +259,8 @@ def trading_bot():
                         trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "cancelled", "details": "Cancelled by user"}
                         logger.info(f"{symbol} > Buy cancelled by user")
                     else:
-                        details = dhan.extract_buy_response_data(buy_resp)
-                        trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "success", "details": details}
-                        logger.info(f"{symbol} > Bought {quantity} stocks")
+                        trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "success", "details": buy_resp}
+                        logger.info(f"{symbol} > Bought {quantity} stocks at ₹{buy_resp.get('price', 'N/A')}")
                 else:
                     details = buy_resp.get('detail', buy_resp) if buy_resp else buy_resp
                     trading_results[symbol] = {"symbol": symbol, "quantity": quantity, "decision": "buy", "result": "error", "details": details}

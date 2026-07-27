@@ -12,9 +12,25 @@ from config import (
     WATCHLIST_SYMBOLS, SECURITY_ID_MAP,
 )
 
+# Dhan product type strings (used directly in API payloads)
+# SDK place_order sends .upper() on these values
+DHAN_PRODUCT_CNC = 'CNC'
+DHAN_PRODUCT_INTRADAY = 'INTRADAY'
+DHAN_PRODUCT_MTF = 'MTF'
+
 
 # Initialize Dhan client
 _client = None
+
+
+def get_product_type():
+    """Get the Dhan product type string from config."""
+    pt = DHAN_PRODUCT_TYPE.upper() if DHAN_PRODUCT_TYPE else 'CNC'
+    valid_types = {DHAN_PRODUCT_CNC, DHAN_PRODUCT_INTRADAY, DHAN_PRODUCT_MTF}
+    if pt not in valid_types:
+        logger.warning(f"Unknown product type '{pt}', defaulting to CNC")
+        return DHAN_PRODUCT_CNC
+    return pt
 
 
 def get_client():
@@ -36,7 +52,13 @@ def dhan_run_with_retries(func, *args, max_retries=3, delay=10, **kwargs):
         msg = f"Function: {func.__name__}, Parameters: {args}, Attempt: {attempt + 1}/{max_retries}"
         logger.debug(msg)
         if result is not None:
-            return result
+            # Check if the response indicates success
+            status = result.get('status') if isinstance(result, dict) else None
+            if status == 'success' or status is None:
+                return result
+            # Status is 'failure' — only return on last attempt
+            if attempt == max_retries - 1:
+                return result
         logger.debug(f"Function: {func.__name__}, Parameters: {args}, Retrying in {delay} seconds...")
         time.sleep(delay)
     return None
@@ -219,9 +241,12 @@ def get_account_info():
         raise Exception(f"Error getting fund limits: {resp}")
 
     data = resp.get('data', {})
-    # Dhan fund limits response structure:
-    # availableMargin, usedMargin, blockedMargin, etc.
-    available_margin = float(data.get('availableMargin', 0)) / 100  # Dhan returns in paise
+    # Dhan fund limits response: availableMargin is in paise (1/100 INR)
+    # but may also be returned in INR depending on API version
+    available_margin = float(data.get('availableMargin', 0))
+    # If value looks like paise (very large), convert to INR
+    if available_margin > 100000:  # More than 1 lakh paise = 1000 INR threshold
+        available_margin = available_margin / 100
     return {
         "buying_power": round_money(available_margin),
         "data": data,
@@ -254,7 +279,6 @@ def get_watchlist_stocks():
     Get watchlist stocks based on configured SECURITY_ID_MAP.
     Returns a list of dicts with 'symbol' and 'securityId'.
     """
-    from config import WATCHLIST_SYMBOLS
     watchlist = []
     for symbol in WATCHLIST_SYMBOLS:
         security_id = resolve_security_id(symbol)
@@ -289,29 +313,13 @@ def get_intraday_data(symbol, interval=5):
         logger.warning(f"Error getting intraday data for {symbol}: {resp}")
         return []
 
-    # Dhan returns data with keys: open, high, low, close, volume, timestamp
+    # Dhan charts API returns: {"open": [...], "high": [...], "low": [...], "close": [...], "volume": [...], "startUnix": [...]}
+    # SDK wraps this as: {'status': 'success', 'data': <raw_api_response>}
     candles = resp.get('data', {})
-    if isinstance(candles, dict):
-        # Convert to list of dicts format
-        result = []
-        timestamps = candles.get('timestamp', [])
-        opens = candles.get('open', [])
-        highs = candles.get('high', [])
-        lows = candles.get('low', [])
-        closes = candles.get('close', [])
-        volumes = candles.get('volume', [])
-        for i in range(len(timestamps)):
-            result.append({
-                'close_price': closes[i] if i < len(closes) else 0,
-                'open_price': opens[i] if i < len(opens) else 0,
-                'high_price': highs[i] if i < len(highs) else 0,
-                'low_price': lows[i] if i < len(lows) else 0,
-                'volume': volumes[i] if i < len(volumes) else 0,
-            })
-        return result
-    elif isinstance(candles, list):
-        return candles
-    return []
+    if not isinstance(candles, dict):
+        return []
+
+    return _parse_chart_data(candles)
 
 
 # Get historical daily data
@@ -337,39 +345,48 @@ def get_historical_data_daily(symbol, days=365):
         return []
 
     candles = resp.get('data', {})
-    if isinstance(candles, dict):
-        result = []
-        timestamps = candles.get('timestamp', [])
-        opens = candles.get('open', [])
-        highs = candles.get('high', [])
-        lows = candles.get('low', [])
-        closes = candles.get('close', [])
-        volumes = candles.get('volume', [])
-        for i in range(len(timestamps)):
-            result.append({
-                'close_price': closes[i] if i < len(closes) else 0,
-                'open_price': opens[i] if i < len(opens) else 0,
-                'high_price': highs[i] if i < len(highs) else 0,
-                'low_price': lows[i] if i < len(lows) else 0,
-                'volume': volumes[i] if i < len(volumes) else 0,
-            })
-        return result
-    elif isinstance(candles, list):
-        return candles
-    return []
+    if not isinstance(candles, dict):
+        return []
+
+    return _parse_chart_data(candles)
+
+
+def _parse_chart_data(candles):
+    """
+    Parse Dhan chart API response into list of OHLCV dicts.
+    Dhan API returns: {"open": [...], "high": [...], "low": [...], "close": [...], "volume": [...], "startUnix": [...]}
+    """
+    result = []
+    opens = candles.get('open', [])
+    highs = candles.get('high', [])
+    lows = candles.get('low', [])
+    closes = candles.get('close', [])
+    volumes = candles.get('volume', [])
+    count = len(closes)  # Use close length as the canonical count
+
+    for i in range(count):
+        result.append({
+            'close_price': closes[i] if i < len(closes) else 0,
+            'open_price': opens[i] if i < len(opens) else 0,
+            'high_price': highs[i] if i < len(highs) else 0,
+            'low_price': lows[i] if i < len(lows) else 0,
+            'volume': volumes[i] if i < len(volumes) else 0,
+        })
+    return result
 
 
 # Get current quote/price for a stock
 def get_stock_quote(symbol):
-    """Get current market quote for a stock."""
+    """Get current market quote for a stock using the SDK's quote_data method."""
     security_id = resolve_security_id(symbol)
     if not security_id:
         return None
 
     client = get_client()
-    # Use market quotes endpoint
     try:
-        resp = client.dhan_http.get(f'/quotes/{DHAN_EXCHANGE_SEGMENT}/{security_id}')
+        # quote_data expects: {"NSE_EQ": [11536]} format
+        securities = {DHAN_EXCHANGE_SEGMENT: [int(security_id)]}
+        resp = client.quote_data(securities)
         if resp and resp.get('status') == 'success':
             return resp.get('data', {})
     except Exception as e:
@@ -393,20 +410,18 @@ def sell_stock(symbol, quantity):
 
     client = get_client()
 
-    # For CNC (delivery) sells, Dhan requires eDIS T-Pin authorization
-    # For INTRADAY sells, no eDIS needed
-    product_type = DHAN_PRODUCT_TYPE  # CNC or INTRADAY
+    product_type = get_product_type()
 
     resp = dhan_run_with_retries(
         client.place_order,
         security_id=security_id,
         exchange_segment=DHAN_EXCHANGE_SEGMENT,
-        transaction_type='SELL',
+        transaction_type=DhanHQ.SELL,
         quantity=int(quantity),
-        order_type='MARKET',
+        order_type=DhanHQ.MARKET,
         product_type=product_type,
         price=0,  # Market order, price 0
-        validity='DAY',
+        validity=DhanHQ.DAY,
     )
     if resp is None:
         raise Exception(f"Error selling {symbol}: No response")
@@ -437,18 +452,18 @@ def buy_stock(symbol, quantity):
         raise Exception(f"Cannot resolve security ID for {symbol}")
 
     client = get_client()
-    product_type = DHAN_PRODUCT_TYPE  # CNC or INTRADAY
+    product_type = get_product_type()
 
     resp = dhan_run_with_retries(
         client.place_order,
         security_id=security_id,
         exchange_segment=DHAN_EXCHANGE_SEGMENT,
-        transaction_type='BUY',
+        transaction_type=DhanHQ.BUY,
         quantity=int(quantity),
-        order_type='MARKET',
+        order_type=DhanHQ.MARKET,
         product_type=product_type,
         price=0,  # Market order, price 0
-        validity='DAY',
+        validity=DhanHQ.DAY,
     )
     if resp is None:
         raise Exception(f"Error buying {symbol}: No response")
