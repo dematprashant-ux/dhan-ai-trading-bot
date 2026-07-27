@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timedelta
 import pandas as pd
 
-from dhanhq import dhan_context as DhanContext
+from dhanhq import DhanContext
 from dhanhq import dhanhq as DhanHQ
 
 from ..utils import logger
@@ -21,11 +21,11 @@ def get_client():
     """Get or create the Dhan API client."""
     global _client
     if _client is None:
-        context = DhanContext.DhanContext(
+        context = DhanContext(
             client_id=DHAN_CLIENT_ID,
             access_token=DHAN_ACCESS_TOKEN,
         )
-        _client = DhanHQ.dhanhq(context)
+        _client = DhanHQ(context)
     return _client
 
 
