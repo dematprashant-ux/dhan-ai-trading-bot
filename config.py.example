@@ -1,47 +1,43 @@
 # Dhan API Credentials
-DHAN_CLIENT_ID = ""                            # Dhan Client ID (from https://www.dhan.co)
-DHAN_ACCESS_TOKEN = ""                         # Dhan Access Token (generate via OAuth or PIN+TOTP)
+DHAN_CLIENT_ID = ""  # Dhan Client ID (from https://www.dhan.co)
+DHAN_ACCESS_TOKEN = ""  # Dhan Access Token (generate via OAuth or PIN+TOTP)
 
-# OpenAI Credentials
-OPENAI_API_KEY = "..."                         # OpenAI API key
+# AI Model Configurations
+OPENAI_API_KEY = ""  # OpenAI API key (optional)
+OMNIROUTE_API_KEY = ""  # Omniroute API key (optional)
+OMNIROUTE_MODEL = ""  # Omniroute model name (optional)
 
-# Basic config parameters
+# Basic Config Parameters
 MODE = "demo"                                  # Trading mode (demo, auto, manual)
 LOG_LEVEL = "INFO"                             # Log level (DEBUG, INFO, WARNING, ERROR)
-RUN_INTERVAL_SECONDS = 600                     # Trading interval in seconds (if the market is open)
+RUN_INTERVAL_SECONDS = 600                     # Trading interval in seconds (market open)
 
-# Dhan exchange and product settings
-DHAN_EXCHANGE_SEGMENT = "NSE_EQ"               # Exchange segment (NSE_EQ, BSE_EQ, NSE_FNO, etc.)
-DHAN_PRODUCT_TYPE = "CNC"                      # Product type (CNC = Delivery, INTRADAY = Intraday)
+# Dhan Exchange Settings
+DHAN_EXCHANGE_SEGMENT = "NSE_FNO"              # Exchange segment (NSE_FNO for options)
+DHAN_PRODUCT_TYPE = "INTRADAY"                 # Product type (INTRADAY for options)
 
-# Dhan trading config parameters
-TRADE_EXCEPTIONS = []                          # List of stocks to exclude from trading (e.g. ["RELIANCE", "TCS", "INFY"])
-WATCHLIST_SYMBOLS = []                         # List of stock symbols to watch (e.g. ["RELIANCE", "TCS", "INFY", "HDFCBANK"])
+# Account Configuration
+ACCOUNT_BALANCE = 1000000.0                    # Trading capital in INR
+RISK_PER_TRADE = 0.02                          # Risk percentage per trade
 
-# Security ID Map: Maps stock ticker symbols to Dhan's numeric security IDs
-# You can find security IDs from Dhan's scrip master CSV:
-#   https://images.dhan.co/api-data/api-scrip-master.csv
-# Or use the Dhan API: https://api.dhan.co/v2/
+# Risk Management
+MAX_DAILY_LOSS = 5000.0                        # Maximum daily loss in INR
+LOT_SIZE = 15                                  # Bank Nifty lot size
+MAX_POSITION_SIZE = 3                          # Max lots per symbol
+TRADE_EXCEPTIONS = ["INFY", "TCS"]             # Symbols to exclude
+
+# Trading Symbols
+WATCHLIST_SYMBOLS = ["BANKNIFTY"]              # Symbols to monitor
+
+# Security ID Map (Bank Nifty Futures)
 SECURITY_ID_MAP = {
-    # "RELIANCE": "1333",     # Reliance Industries Ltd
-    # "TCS": "11536",         # Tata Consultancy Services Ltd
-    # "INFY": "1594",         # Infosys Ltd
-    # "HDFCBANK": "42",       # HDFC Bank Ltd
-    # "ICICIBANK": "496",     # ICICI Bank Ltd
-    # "SBIN": "3045",         # State Bank of India
-    # "BHARTIARTL": "1064",   # Bharti Airtel Ltd
-    # "ITC": "1624",          # ITC Ltd
-    # "KOTAKBANK": "5765",    # Kotak Mahindra Bank Ltd
-    # "LT": "1855",           # Larsen & Toubro Ltd
+    "BANKNIFTY": "26009"                       # Bank Nifty futures security ID
 }
 
-# Trading limits (in INR, since Dhan trades on Indian exchanges)
-MIN_SELLING_AMOUNT_USD = 1.0                   # Minimum sell amount in INR (False - disable setting)
-MAX_SELLING_AMOUNT_USD = 10.0                  # Maximum sell amount in INR (False - disable setting)
-MIN_BUYING_AMOUNT_USD = 1.0                    # Minimum buy amount in INR (False - disable setting)
-MAX_BUYING_AMOUNT_USD = 10.0                   # Maximum buy amount in INR (False - disable setting)
-PORTFOLIO_LIMIT = 10                           # Number of stocks to hold in the portfolio
-WATCHLIST_OVERVIEW_LIMIT = 5                   # Max stocks to analyze from watchlist per run
-
-# OpenAI config params
-OPENAI_MODEL_NAME = "gpt-4o-mini"              # OpenAI model name
+# Position Sizing
+MIN_SELLING_AMOUNT_USD = False                 # Disable amount limits
+MAX_SELLING_AMOUNT_USD = False
+MIN_BUYING_AMOUNT_USD = False
+MAX_BUYING_AMOUNT_USD = False
+PORTFOLIO_LIMIT = 1                            # Max concurrent positions
+WATCHLIST_OVERVIEW_LIMIT = 1                   # Symbols analyzed per run

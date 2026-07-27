@@ -2,10 +2,18 @@ from datetime import datetime
 import json
 import asyncio
 import sys
+import os
 
-from config import *
+from config import (
+    DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN, MODE, LOG_LEVEL, RUN_INTERVAL_SECONDS,
+    DHAN_EXCHANGE_SEGMENT, DHAN_PRODUCT_TYPE, TRADE_EXCEPTIONS, WATCHLIST_SYMBOLS,
+    SECURITY_ID_MAP, MIN_SELLING_AMOUNT_USD, MAX_SELLING_AMOUNT_USD,
+    MIN_BUYING_AMOUNT_USD, MAX_BUYING_AMOUNT_USD, PORTFOLIO_LIMIT,
+    WATCHLIST_OVERVIEW_LIMIT, OMNIROUTE_API_KEY, OMNIROUTE_MODEL
+)
 from src.api import dhan
-from src.api import openai
+from src.api.openai import get_ai_decision as get_openai_decision
+from src.api.omniroute import get_ai_decision as get_omniroute_decision
 from src.utils import logger
 
 
@@ -16,12 +24,22 @@ def validate_config():
         errors.append("DHAN_CLIENT_ID is empty — set it in config.py")
     if not DHAN_ACCESS_TOKEN:
         errors.append("DHAN_ACCESS_TOKEN is empty — set it in config.py")
-    if not OPENAI_API_KEY:
-        errors.append("OPENAI_API_KEY is empty — set it in config.py")
-    if WATCHLIST_SYMBOLS and not SECURITY_ID_MAP:
-        errors.append("WATCHLIST_SYMBOLS is set but SECURITY_ID_MAP is empty — add security IDs")
     if MODE not in ('demo', 'auto', 'manual'):
         errors.append(f"MODE must be 'demo', 'auto', or 'manual', got '{MODE}'")
+
+    ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+    if ai_provider not in ("openai", "omniroute"):
+        errors.append(f"Invalid AI_PROVIDER '{ai_provider}'. Use 'openai' or 'omniroute'")
+    else:
+            if ai_provider == "openai":
+                if not OPENAI_API_KEY:
+                    errors.append("OPENAI_API_KEY is required for OpenAI provider")
+            elif ai_provider == "omniroute":
+                if not OMNIROUTE_API_KEY:
+                    errors.append("OMNIROUTE_API_KEY is required for Omniroute provider")
+
+    if WATCHLIST_SYMBOLS and not SECURITY_ID_MAP:
+        errors.append("WATCHLIST_SYMBOLS is set but SECURITY_ID_MAP is empty — add security IDs")
 
     if errors:
         for e in errors:
@@ -52,6 +70,7 @@ def get_ai_amount_guidelines():
 
 # Make AI-based decisions on stock portfolio and watchlist
 def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
+    ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
     constraints = [
         f"- Initial budget: {account_info['buying_power']} INR",
         f"- Max portfolio size: {PORTFOLIO_LIMIT} stocks",
@@ -64,41 +83,27 @@ def make_ai_decisions(account_info, portfolio_overview, watchlist_overview):
     if len(TRADE_EXCEPTIONS) > 0:
         constraints.append(f"- Excluded stocks: {', '.join(TRADE_EXCEPTIONS)}")
 
-    ai_prompt = (
-        "**Context:**\n"
-        f"Today is {datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')}.{chr(10)}"
-        f"You are a short-term investment advisor managing an Indian stock portfolio.{chr(10)}"
-        f"You analyze market conditions every {RUN_INTERVAL_SECONDS} seconds and make investment decisions on NSE/BSE.{chr(10)}"
-        f"All prices are in INR (Indian Rupees).{chr(10)}"
-        f"{chr(10)}{chr(10)}"
-        "**Constraints:**\n"
-        f"{chr(10).join(constraints)}"
-        "\n\n"
-        "**Stock Data:**\n"
-        "```json\n"
-        f"{json.dumps({**portfolio_overview, **watchlist_overview}, indent=1)}{chr(10)}"
-        "```\n\n"
-        "**Response Format:**\n"
-        "Return your decisions in a JSON array with this structure:\n"
-        "```json\n"
-        "[\n"
-        '  {"symbol": <symbol>, "decision": <decision>, "quantity": <quantity>},\n'
-        "  ...\n"
-        "]\n"
-        "```\n"
-        "- <symbol>: Stock symbol (NSE trading symbol).\n"
-        "- <decision>: One of `buy`, `sell`, or `hold`.\n"
-        "- <quantity>: Recommended transaction quantity (integer, in units of shares).\n\n"
-        "**Instructions:**\n"
-        "- Provide only the JSON output with no additional text.\n"
-        "- Return an empty array if no actions are necessary."
-    )
-    logger.debug(f"AI making-decisions prompt:{chr(10)}{ai_prompt}")
-    ai_response = openai.make_ai_request(ai_prompt)
-    response_content = ai_response.choices[0].message.content
-    logger.debug(f"AI making-decisions response:{chr(10)}{response_content.strip() if response_content else 'None'}")
-    decisions = openai.parse_ai_response(ai_response)
-    return decisions
+        # Convert constraints list to dictionary for Omniroute
+        constraints_dict = {
+            "budget": constraints[0].split(": ")[1],
+            "max_portfolio_size": constraints[1].split(": ")[1],
+            "sell_guidelines": constraints[2].split(": ")[1] if len(constraints) > 2 else None,
+            "buy_guidelines": constraints[3].split(": ")[1] if len(constraints) > 3 else None,
+            "excluded_stocks": constraints[4].split(": ")[1] if len(constraints) > 4 else None
+        }
+
+        ai_input = {
+            "current_time": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "market_status": "open" if dhan.is_market_open() else "closed",
+            "stocks": {**portfolio_overview, **watchlist_overview},
+            "constraints": constraints_dict
+        }
+
+        if ai_provider == "openai":
+            return get_openai_decision(ai_input)
+        elif ai_provider == "omniroute":
+            return get_omniroute_decision(ai_input)
+        return []
 
 
 # Filter AI hallucinations
