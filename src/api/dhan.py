@@ -56,9 +56,13 @@ def dhan_run_with_retries(func, *args, max_retries=3, delay=10, **kwargs):
             status = result.get('status') if isinstance(result, dict) else None
             if status == 'success' or status is None:
                 return result
-            # Status is 'failure' — only return on last attempt
-            if attempt == max_retries - 1:
-                return result
+            # Status is 'failure' — retry unless it's the last attempt
+            if attempt < max_retries - 1:
+                logger.warning(f"Function: {func.__name__} returned failure status, retrying...")
+                time.sleep(delay)
+                continue
+            # Last attempt, return whatever we got
+            return result
         logger.debug(f"Function: {func.__name__}, Parameters: {args}, Retrying in {delay} seconds...")
         time.sleep(delay)
     return None
