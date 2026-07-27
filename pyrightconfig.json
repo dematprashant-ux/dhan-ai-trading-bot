@@ -13,5 +13,6 @@
     "reportPrivateUsage": "none",
     "reportImportCycles": "none",
     "reportAttributeAccessIssue": "none",
-    "reportAssignmentType": "none"
+    "reportAssignmentType": "none",
+    "reportCallIssue": "none"
 }
